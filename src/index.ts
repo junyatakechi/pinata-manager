@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import dotenv from "dotenv";
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -13,42 +15,44 @@ const metaDataFolderPath = args[1] || __dirname;
 
 const readJsonFilesFromFolder = (folderPath:string) => {
   const fileNames = fs.readdirSync(folderPath);
-  return fileNames.map(fileName => {
+  const jsonDataArray = fileNames.map(fileName => {
     const filePath = path.join(folderPath, fileName);
     const fileContents = fs.readFileSync(filePath, 'utf-8');
     return JSON.parse(fileContents);
   });
+  return [fileNames, jsonDataArray];
 };
 
-const downloadFromIPFS = async (ipfsUrl:string, fileName:string, dir:string) => {
-    console.log(ipfsUrl, fileName, dir);
-//   try {
-//     console.log(`Starting download for ${fileName} from ${ipfsUrl}`);
-//     const hash = ipfsUrl.split('ipfs://')[1];
-//     const response = await axios({
-//       url: `https://ipfs.io/ipfs/${hash}`,
-//       method: 'GET',
-//       responseType: 'arraybuffer',
-//     });
-//     const buffer = Buffer.from(response.data, 'binary');
-//     fs.writeFileSync(path.join(dir, fileName), buffer);
-//     console.log(`Successfully downloaded ${fileName}`);
-//   } catch (error) {
-//     console.error(`Error downloading ${ipfsUrl}: ${error}`);
-//     fs.appendFileSync('failedDownloads.txt', `Failed to download ${fileName} from ${ipfsUrl}. Error: ${error}\n`);
-//   }
+const downloadFromIPFS = async (gatewayUrl: string, ipfsUrl:string, fileName:string, dir:string) => {
+  try {
+    console.log(`Starting download for ${fileName} from ${ipfsUrl}`);
+    const hash = ipfsUrl.split('ipfs://')[1];
+    const response = await axios({
+      url: `${gatewayUrl}/${hash}`,
+      method: 'GET',
+      responseType: 'arraybuffer',
+    });
+    const buffer = Buffer.from(response.data, 'binary');
+    fs.writeFileSync(path.join(dir, fileName), buffer);
+    console.log(`Successfully downloaded ${fileName}`);
+  } catch (error) {
+    console.error(`Error downloading ${ipfsUrl}: ${error}`);
+    fs.appendFileSync('failedDownloads.txt', `Failed to download ${fileName} from ${ipfsUrl}. Error: ${error}\n`);
+  }
 };
 
 const main = async () => {
+  const gateway =  process.env.Gateway_URL as string;
   console.log(`Files will be downloaded to: ${dir}`);
-  const jsonDataArray = readJsonFilesFromFolder(metaDataFolderPath);
+  const [fileNames, jsonDataArray] = readJsonFilesFromFolder(metaDataFolderPath);
 
-  for (const jsonData of jsonDataArray) {
-    const { name, image, animation_url, avatar_url } = jsonData;
+  for (let i=0; i<fileNames.length; i++) {
 
-    await downloadFromIPFS(image, `${name}_image.png`, dir);
-    await downloadFromIPFS(animation_url, `${name}_animation.mp4`, dir);
-    await downloadFromIPFS(avatar_url, `${name}_avatar.vrm`, dir);
+    const { name, image, animation_url, avatar_url } = jsonDataArray[i];
+
+    await downloadFromIPFS(gateway, image, `${fileNames[i]}.png`, dir);
+    await downloadFromIPFS(gateway, animation_url, `${fileNames[i]}.mp4`, dir);
+    await downloadFromIPFS(gateway, avatar_url, `${fileNames[i]}.vrm`, dir);
   }
 };
 

@@ -13,6 +13,7 @@ README.md
 - API_Key
 - API_Secret
 - JWT
+- Gateway_URL
 
 # コマンド
 - 実行
