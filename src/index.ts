@@ -7,45 +7,44 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// コマンドライン引数を取得（Node.jsの実行パスとスクリプトのファイルパスを除く）
 const args = process.argv.slice(2);
-
-// 最初の引数をダウンロード先ディレクトリとして使用
 const dir = args[0] || __dirname;
+const metaDataFolderPath = args[1] || __dirname;
 
-// JSONデータの例（本当はファイルから読み込む）
-const jsonData = [
-    {
-      name: "Metaani GEN#09514",
-      image: "ipfs://QmbwFruhuCU6aUuihXurorE5or5kooPocGDCQTo4KGEHXH",
-      animation_url: "ipfs://QmbwFruhuCU6aUuihXurorE5or5kooPocGDCQTo4KGEHXH",
-      avatar_url: "ipfs://QmbwFruhuCU6aUuihXurorE5or5kooPocGDCQTo4KGEHXH",
-    }
-    // 他の999個のJSONデータ
-  ];
+const readJsonFilesFromFolder = (folderPath:string) => {
+  const fileNames = fs.readdirSync(folderPath);
+  return fileNames.map(fileName => {
+    const filePath = path.join(folderPath, fileName);
+    const fileContents = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(fileContents);
+  });
+};
 
-const downloadFromIPFS = async (ipfsUrl: string, fileName: string, dir:string) => {
-  try {
-    console.log(`Starting download for ${fileName} from ${ipfsUrl}`);
-    const hash = ipfsUrl.split('ipfs://')[1];
-    const response = await axios({
-      url: `https://ipfs.io/ipfs/${hash}`,
-      method: 'GET',
-      responseType: 'arraybuffer',
-    });
-    const buffer = Buffer.from(response.data, 'binary');
-    fs.writeFileSync(path.join(dir, fileName), buffer);
-    console.log(`Successfully downloaded ${fileName}`);
-  } catch (error) {
-    console.error(`Error downloading ${ipfsUrl}: ${error}`);
-  }
+const downloadFromIPFS = async (ipfsUrl:string, fileName:string, dir:string) => {
+    console.log(ipfsUrl, fileName, dir);
+//   try {
+//     console.log(`Starting download for ${fileName} from ${ipfsUrl}`);
+//     const hash = ipfsUrl.split('ipfs://')[1];
+//     const response = await axios({
+//       url: `https://ipfs.io/ipfs/${hash}`,
+//       method: 'GET',
+//       responseType: 'arraybuffer',
+//     });
+//     const buffer = Buffer.from(response.data, 'binary');
+//     fs.writeFileSync(path.join(dir, fileName), buffer);
+//     console.log(`Successfully downloaded ${fileName}`);
+//   } catch (error) {
+//     console.error(`Error downloading ${ipfsUrl}: ${error}`);
+//     fs.appendFileSync('failedDownloads.txt', `Failed to download ${fileName} from ${ipfsUrl}. Error: ${error}\n`);
+//   }
 };
 
 const main = async () => {
   console.log(`Files will be downloaded to: ${dir}`);
+  const jsonDataArray = readJsonFilesFromFolder(metaDataFolderPath);
 
-  for (const data of jsonData) {
-    const { name, image, animation_url, avatar_url } = data;
+  for (const jsonData of jsonDataArray) {
+    const { name, image, animation_url, avatar_url } = jsonData;
 
     await downloadFromIPFS(image, `${name}_image.png`, dir);
     await downloadFromIPFS(animation_url, `${name}_animation.mp4`, dir);
